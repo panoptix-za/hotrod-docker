@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+
+  hotrod-server:
+    restart: unless-stopped
+    container_name: "hotrod-server"
+    image: ghcr.io/panoptix-za/hotrod-stable:latest
+
+    # Mac with M1/M2
+    platform: linux/amd64
+
+    volumes:
+      - hotrod-server:/volume
+    
+    ports:
+      - 3000:3000
+    
+    environment:
+      # network / server
+      - HOTROD_BIND_ADDRESS=0.0.0.0:3000
+      # network / built-in agent
+      - HOTROD_AGENT_LISTENER=0.0.0.0:3040
+      - HOTROD_AGENT_API_BIND_ADDRESS=0.0.0.0:3041
+      # data
+      - HOTROD_STAGING_DIR=/volume/data
+      # credentials
+      - HOTROD_ADMIN_INIT_PASSWORD=adminadminadmin
+      - HOTROD_AUTO_ENROLLMENT_KEY=supersecretenrollmentkey
+      # other
+      - HOTROD_LICENSE_EULA_ACCEPT=yes
+      - HOTROD_LOG=audit=info,hotrodd=warn
+      - HOTROD_LOG_RETENTION_DAYS=15
+    
+    command: hotrod run server
+
+  hotrod-agent1:
+    restart: unless-stopped
+    container_name: "hotrod-agent1"  
+    image: ghcr.io/panoptix-za/hotrod-stable:latest
+
+    # Mac with M1/M2
+    platform: linux/amd64
+
+    volumes:
+      - hotrod-agent1:/volume
+
+    depends_on:
+      hotrod-server:
+        condition: service_started
+    
+    environment:
+      # network / agent
+      - HOTROD_AGENT_LISTENER=0.0.0.0:4040
+      - HOTROD_AGENT_API_BIND_ADDRESS=0.0.0.0:4041
+      - HOTROD_AGENT_NAME=agent1
+      # server connection
+      - HOTROD_URL=http://hotrod-server:3000
+      - HOTROD_AGENT_RETRY=15
+      # data
+      - HOTROD_PIPES_DIR=/volume/pipes
+      # credentials
+      - HOTROD_ADMIN_INIT_PASSWORD=adminadminadmin
+      - HOTROD_AUTO_ENROLLMENT_KEY=supersecretenrollmentkey
+      # other
+      - HOTROD_LICENSE_EULA_ACCEPT=yes
+      - HOTROD_LOG=audit=info,hotrodd=warn
+      - HOTROD_LOG_RETENTION_DAYS=15
+    
+    command: hotrod run agent
+
+volumes:
+  hotrod-server: {}
+  hotrod-agent1: {}
+
+networks:
+  hotrod:
+    driver: bridge
+
